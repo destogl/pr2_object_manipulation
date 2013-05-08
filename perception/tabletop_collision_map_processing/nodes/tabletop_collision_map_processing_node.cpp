@@ -52,6 +52,7 @@ class CollisionMapProcessor
     CollisionMapInterface collision_map_;
     ros::ServiceServer processing_srv_;
     tf::TransformListener listener_;
+    double min_marker_quality_;
 
     bool serviceCallback(TabletopCollisionMapProcessing::Request &request,
                          TabletopCollisionMapProcessing::Response &response)
@@ -119,16 +120,14 @@ class CollisionMapProcessor
           //insert its collision name into the list
           response.collision_object_names.push_back(collision_name);
 
-          //-------------- also provide the recognition information, if any --------------
-          //temporary: decide here if the object is recognized or not
-          //TODO remove this
           // Do an extra check, if models were not requested from tabletop_complete, then
           // 'request.detection_result.cluster_model_indices' & 'request.detection_result.models' will not exist.
           if (!request.detection_result.cluster_model_indices.empty())
           {
             int ri = request.detection_result.cluster_model_indices[c];
+            // Decide if object is recognized with min_marker_quality_ treshold
             if (!request.detection_result.models[ri].model_list.empty() &&
-                request.detection_result.models[ri].model_list[0].confidence < 0.005)
+                request.detection_result.models[ri].model_list[0].confidence < min_marker_quality_)
             {
                 object.potential_models = request.detection_result.models[ri].model_list;
                 //convert the results to the desired frame
@@ -174,6 +173,9 @@ class CollisionMapProcessor
     //advertise service
     processing_srv_ = priv_nh_.advertiseService(COLLISION_SERVICE_NAME,
         &CollisionMapProcessor::serviceCallback, this);
+
+    // The confidence value of each model fitment must be above this value
+    priv_nh_.param<double>("min_marker_quality", min_marker_quality_, 0.06);
   }
 
     ~CollisionMapProcessor() {}
