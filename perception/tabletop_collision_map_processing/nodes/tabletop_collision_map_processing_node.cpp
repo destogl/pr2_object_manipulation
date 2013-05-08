@@ -85,11 +85,11 @@ class CollisionMapProcessor
             object.cluster.header.stamp = ros::Time(0);
             try
             {
-              listener_.transformPointCloud(request.desired_frame, object.cluster, object.cluster);    
+              listener_.transformPointCloud(request.desired_frame, object.cluster, object.cluster);
             }
             catch (tf::TransformException ex)
             {
-              ROS_ERROR("Failed to transform cluster to %s frame; exception: %s", 
+              ROS_ERROR("Failed to transform cluster to %s frame; exception: %s",
                         request.desired_frame.c_str(), ex.what());
               return false;
             }
@@ -120,36 +120,41 @@ class CollisionMapProcessor
           //-------------- also provide the recognition information, if any --------------
           //temporary: decide here if the object is recognized or not
           //TODO remove this
-          int ri = request.detection_result.cluster_model_indices[c];
-          if (!request.detection_result.models[ri].model_list.empty() &&
-              request.detection_result.models[ri].model_list[0].confidence < 0.005)
+          // Do an extra check, if models were not requested from tabletop_complete, then
+          // 'request.detection_result.cluster_model_indices' & 'request.detection_result.models' will not exist.
+          if (!request.detection_result.cluster_model_indices.empty())
           {
-            object.potential_models = request.detection_result.models[ri].model_list;
-            //convert the results to the desired frame
-            if (!request.desired_frame.empty())
+            int ri = request.detection_result.cluster_model_indices[c];
+            if (!request.detection_result.models[ri].model_list.empty() &&
+                request.detection_result.models[ri].model_list[0].confidence < 0.005)
             {
-              for (size_t m=0; m<object.potential_models.size(); m++)
-              {
-                object.potential_models[m].pose.header.stamp = ros::Time(0);
-                try
+                object.potential_models = request.detection_result.models[ri].model_list;
+                //convert the results to the desired frame
+                if (!request.desired_frame.empty())
                 {
-                  listener_.transformPose(request.desired_frame, 
-                                          object.potential_models[m].pose, object.potential_models[m].pose);
-                }
-                catch (tf::TransformException ex)
-                {
-                  ROS_ERROR("Failed to transform pose or cluster to %s frame; exception: %s", 
-                            request.desired_frame.c_str(), ex.what());
-                  return false;
+                  for (size_t m=0; m<object.potential_models.size(); m++)
+                  {
+                      object.potential_models[m].pose.header.stamp = ros::Time(0);
+                      try
+                      {
+                        listener_.transformPose(request.desired_frame,
+                                              object.potential_models[m].pose, object.potential_models[m].pose);
+                      }
+                      catch (tf::TransformException ex)
+                      {
+                      ROS_ERROR("Failed to transform pose or cluster to %s frame; exception: %s",
+                                  request.desired_frame.c_str(), ex.what());
+                      return false;
+                      }
+                  }
                 }
               }
-            }
           }
 
           //----------------- add the object to the list -------------------------
           response.graspable_objects.push_back(object);
         }
-        
+
         return true;
       }
       catch (CollisionMapException &ex)
