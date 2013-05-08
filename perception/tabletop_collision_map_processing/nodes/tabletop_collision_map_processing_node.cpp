@@ -114,6 +114,8 @@ class CollisionMapProcessor
           //-------------- add the object to the collision map as a bounding box ---------------
           std::string collision_name;
           collision_map_.processCollisionGeometryForBoundingBox(bbox, collision_name);
+          // add the collision name for each cluster object
+          object.collision_name = collision_name;
           //insert its collision name into the list
           response.collision_object_names.push_back(collision_name);
 
